@@ -1,0 +1,144 @@
+---
+title: "Tiejun Zhang Project H"
+output: html_notebook
+---
+
+
+
+
+# Introduction
+
+
+A researcher at the University of South Carolina was interested in exploring the effects of socioeconomic status (SES) on education. The dataset for analysis consisted of two hundred observations randomly sampled from the 2005 High School and Beyond survey, a national survey of high school seniors. In this study the researcher aimed to explore the relationship between socioeconomic status and literacy competence measured by a reading test and a writing test.
+
+
+# Graphs and Descriptive Statistics
+
+Boxplots were used to to examine the possible relationships of SES to reading and writing scores. It seems that SES is associated with both the reading and writing scores. That is, students from higher SES are likely to  perform better on both reading and writing tests.
+
+```{r}
+library(tidyverse)
+hsb2 <- read_csv("hsb2.csv")
+
+```
+
+Figure 1: Boxplots of reading and writing scores by SES                         
+```{r}
+hsb2$ses <- factor(hsb2$ses, labels = c("Low", "Middle", "High"))
+p1 <- ggplot(hsb2, aes(x=ses, y = read)) +
+  ggtitle("Reading Score") + 
+  geom_boxplot(aes(fill = ses)) +  
+  guides(fill=guide_legend(title="SES")) + 
+  geom_jitter()
+
+p2 <- ggplot(hsb2, aes(x=ses, y = write)) +
+  ggtitle("Writing Score") + 
+  geom_boxplot(aes(fill = ses)) +  
+  guides(fill=guide_legend(title="SES")) + 
+  geom_jitter()
+
+#install.packages("gridExtra")
+library(gridExtra)
+grid.arrange(p1, p2, ncol=1, nrow=2)
+
+```
+
+
+The researcher further plotted the means on the two dependable variables by SES. As shown below, the mean scores for both variables rise as SES shifts from low level to a higher level.
+
+Figure 2: Plot of Score Means by SES
+```{r}
+hsb2 %>% 
+  group_by(ses) %>% 
+  dplyr::summarise(read = mean(read),
+            write  = mean(write)) %>%
+  
+  ggplot(aes(x = read, y = write, color = ses, shape = ses)) +
+  geom_point(alpha = .4, size = 4) +
+  theme_bw() +
+  guides(color = guide_legend("ses"),  shape = guide_legend("ses")) +
+  labs(title = "Means of Reading Scores(X) and Writing Scores(Y) by SES levels",
+       x = "Reading Score",
+       y = "Writing Score")
+
+```
+
+
+
+Below is the summary statistics table
+
+*Table 1: Summary Statistics*
+```{r}
+
+# subset data
+low <- hsb2[hsb2$ses=="Low",]
+middle <- hsb2[hsb2$ses=="Middle",]
+high <- hsb2[hsb2$ses=="High",]
+
+# Create Dataframe of Summary Statistics for each read/write by SES
+summary.dataframe <- data.frame(c(summary(low$read)), c(summary(middle$read)), 
+                                c(summary(high$read)), c(summary(low$write)), 
+                                c(summary(middle$write)), c(summary(high$write)))
+summary.dataframe <- round(summary.dataframe, 2)
+
+# Transpose dataframe
+summary.dataframe1 <- t(summary.dataframe)  
+
+score.ses<- c("read.low", "read.middle", "read.high", "write.low", 
+              "write.middle", "write.high")
+summary.dataframe2<- data.frame(score.ses, summary.dataframe1)
+colnames(summary.dataframe2) <- c("Score.SES", "Minimum", "1st Quartile", 
+                                  "Median", "Mean", "3rd Quatile", "Maximum")
+# install.packages("DT")
+library(DT)
+
+# Output Table
+DT::datatable(summary.dataframe2, 
+              rownames=FALSE, 
+              options = list(autowidth=TRUE, sClass="alignRight", 
+                             className = 'dt-center', dom='tips', 
+                             pageLength=6, digit=4))
+
+```
+
+
+
+
+# MANOVA Test and Analysis
+
+The researcher conducted one-way MANOVA test to examine the effects of SES on students’ literacy competence. The Wilks lambda value is 0.91 and the approximated F value is 4.87. The p value is 0.0009.
+
+```{r}
+
+manova.model <- manova(cbind(read, write) ~ ses, hsb2)
+wilk.result <- summary(manova.model, test = "Wilks")
+wilk.result
+
+
+```
+
+
+
+The effect size (Partial Eta-Squared Value) stands for the variance that can be explained by the explanatory variable(SES). It can be calculated based on the Wilks lambda and S (min(P , df_effect). We found that 5% variance of the reading scores and writing scores are due to difference of SES level. The p value obtained from the MANOVA test suggests that the effect size of the association between students' literacy competence and SES is pretty stable and can be infered to the population.
+
+
+```{r}
+
+# P is the number of dependable variables. df_factor is the df of the explanatory variable
+p <- 2
+df_effect <- wilk.result$stats[1,1]
+
+# S is the minimum of P and df of the explanotary variable
+S <- min(p, df_effect)
+
+effect.size <- 1 - wilk.result$stats[1,2]^(1/S)
+effect.size
+
+```
+
+
+
+
+# Conclusion
+
+Our data for this analysis has a large sample size of 200 participants and meets all the test assumptions of independence, multivariate normality and equality of covariance matrices. Thus, we are very confident to generalize our findings to the larger population. The MANOVA test results show that the p-value is 0.0008, hence we are confident to infer a difference between SES levels on the combined dependent variables. However, we also found that only 5% of the total variance of the reading and writing scores can be explained by the difference of SES level.
